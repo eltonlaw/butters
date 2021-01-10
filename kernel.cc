@@ -13,10 +13,8 @@
  
 extern "C" void kernel_main(void) 
 {
-	/* Initialize terminal interface */
-	terminal::initialize();
+    terminal::Terminal t {80, 25};
  
-	/* Newline support is left as an exercise. */
-	terminal::writestring("Hello, kernel World!\n");
-	terminal::writestring("This is a new line!\n");
+    t.write("Hello, kernel World!\n");
+    t.write("This is a new line!\n");
 }
