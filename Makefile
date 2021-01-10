@@ -4,6 +4,8 @@ CXX=i686-elf-g++
 AS=i686-elf-as
 CXXFLAGS=-ffreestanding -O2 -Wall -Wextra -fno-exceptions -fno-rtti
 
+bin: $(NAME).bin
+
 # quit by: Ctrl+Alt+g > clicking shell > ctrl+c
 qemu: $(NAME).iso
 	qemu-system-i386 -cdrom $(NAME).iso
@@ -20,10 +22,10 @@ $(NAME).bin: boot.o kernel.o
 check:
 	grub-file --is-x86-multiboot $(NAME).bin
 
-boot.o:
+boot.o: boot.s
 	$(AS) boot.s -o $@
 
-kernel.o:
+kernel.o: kernel.cc terminal.h
 	$(CXX) -c kernel.cc -o $@ $(CXXFLAGS)
 
 clean:
