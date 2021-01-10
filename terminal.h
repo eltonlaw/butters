@@ -42,7 +42,26 @@ size_t strlen(const char* str)
         len++;
     return len;
 }
- 
+
+/* taken from https://wiki.osdev.org/Detecting_Colour_and_Monochrome_Monitors */
+enum video_type
+{
+    VIDEO_TYPE_NONE = 0x00,
+    VIDEO_TYPE_COLOUR = 0x20,
+    VIDEO_TYPE_MONOCHROME = 0x30,
+};
+
+uint16_t detect_bios_area_hardware(void)
+{
+    const uint16_t* bda_detected_hardware_ptr = (const uint16_t*) 0x410;
+    return *bda_detected_hardware_ptr;
+}
+
+enum video_type get_bios_area_video_type(void)
+{
+    return (enum video_type) (detect_bios_area_hardware() & 0x30);
+}
+
 class Terminal
 {
     private:
@@ -52,8 +71,8 @@ class Terminal
         size_t column;
         uint8_t color;
         uint16_t* buffer;
-        void increase_row(void);
-        void increase_column(void);
+        void next_row(void);
+        void next_column(void);
         void putentryat(char c, uint8_t color, size_t x, size_t y);
         void putchar(char c);
     public:
@@ -72,7 +91,20 @@ Terminal::Terminal(size_t width, size_t height)
     column = 0;
 
     color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    buffer = (uint16_t*) 0xB8000;
+    switch (get_bios_area_video_type()) {
+        case VIDEO_TYPE_COLOUR:
+            /* for colour monitors text screen mem at 0xB8000 */
+            buffer = (uint16_t*) 0xB8000;
+            break;
+        case VIDEO_TYPE_MONOCHROME:
+            /* for monochrome monitors text screen mem at address 0xB0000 */
+            buffer = (uint16_t*) 0xB0000;
+            break;
+        default:
+            /* FIXME: to quiet warning, this needs to be handled properly */
+            buffer = (uint16_t*) 0xB8000;
+            break;
+    }
     for (size_t y = 0; y < vga_height; y++) {
         for (size_t x = 0; x < vga_width; x++) {
             const size_t index = y * vga_width + x;
@@ -96,15 +128,15 @@ void Terminal::putentryat(char c, uint8_t color, size_t x, size_t y)
     buffer[index] = vga_entry(c, color);
 }
 
-void Terminal::increase_column(void)
+void Terminal::next_column(void)
 {
     if (++column == vga_width) {
         column = 0;
-        increase_row();
+        next_row();
     }
 }
 
-void Terminal::increase_row(void)
+void Terminal::next_row(void)
 {
     if (++row == vga_height)
         row = 0;
@@ -115,10 +147,10 @@ void Terminal::putchar(char c)
     /* if newline is passed in don't put anything */
     if (c == '\n') {
         column = 0;
-        increase_row();
+        next_row();
     } else {
         putentryat(c, color, column, row);
-        increase_column();
+        next_column();
     }
 }
  
