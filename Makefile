@@ -4,6 +4,10 @@ CXX=i686-elf-g++
 AS=i686-elf-as
 CXXFLAGS=-ffreestanding -O2 -Wall -Wextra -fno-exceptions -fno-rtti
 
+CPPFILES := $(shell find ./ -type f -name '*.cpp')
+OBJ    := $(CPPFILES:.cpp=.o)
+
+iso: $(NAME).iso
 bin: $(NAME).bin
 
 # quit by: Ctrl+Alt+g > clicking shell > ctrl+c
@@ -16,8 +20,8 @@ $(NAME).iso: $(NAME).bin
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	grub-mkrescue -o $(NAME).iso isodir
 
-$(NAME).bin: boot.o kernel.o
-	i686-elf-g++ -T linker.ld -o $(NAME).bin -ffreestanding -O2 -nostdlib boot.o kernel.o -lgcc	
+$(NAME).bin: $(OBJ) boot.o
+	i686-elf-g++ -T  linker.ld -o $(NAME).bin $^ -ffreestanding -O2 -nostdlib -lgcc
 
 check:
 	grub-file --is-x86-multiboot $(NAME).bin
@@ -25,8 +29,8 @@ check:
 boot.o: boot.s
 	$(AS) boot.s -o $@
 
-kernel.o: kernel.cc terminal.h
-	$(CXX) -c kernel.cc -o $@ $(CXXFLAGS)
+%.o: %.c
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f boot.o kernel.o $(NAME).bin $(NAME).iso
